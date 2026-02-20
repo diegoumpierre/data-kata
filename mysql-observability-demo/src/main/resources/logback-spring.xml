@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+
+    <!-- Console Appender for development -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Loki Appender for centralized logging -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>http://localhost:3100/loki/api/v1/push</url>
+        </http>
+        <format>
+            <label>
+                <pattern>application=${appName},host=${HOSTNAME},level=%level</pattern>
+            </label>
+            <message>
+                <pattern>
+                    {
+                    "timestamp": "%d{yyyy-MM-dd'T'HH:mm:ss.SSS'Z'}",
+                    "level": "%level",
+                    "thread": "%thread",
+                    "logger": "%logger",
+                    "message": "%message",
+                    "trace_id": "%mdc{traceId}",
+                    "span_id": "%mdc{spanId}"
+                    }
+                </pattern>
+            </message>
+        </format>
+    </appender>
+
+    <!-- JSON encoder for structured logging -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>true</includeContext>
+            <includeMdc>true</includeMdc>
+            <customFields>{"service":"${appName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Query observability logger (goes to Loki) -->
+    <logger name="query-observability" level="INFO" additivity="false">
+        <appender-ref ref="JSON_CONSOLE"/>
+        <appender-ref ref="LOKI"/>
+    </logger>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="LOKI"/>
+    </root>
+</configuration>

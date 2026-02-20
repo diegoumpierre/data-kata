@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: mysql-observability-demo
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/demo_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: demo_user
+    password: demo_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      register-mbeans: true
+
+# Actuator endpoints for Prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        db.query.duration: true
+    tags:
+      application: ${spring.application.name}
+      environment: development
+
+  # OpenTelemetry tracing for Tempo
+  tracing:
+    sampling:
+      probability: 1.0  # 100% sampling for demo (reduce in production)
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.demo.observability: DEBUG
+    query-observability: INFO
+    org.springframework.jdbc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Server configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
